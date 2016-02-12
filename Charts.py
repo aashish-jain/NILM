@@ -1,13 +1,9 @@
 from  openpyxl import (Workbook,load_workbook)
-from openpyxl.chart import (
-    AreaChart,
-    Reference,
-    Series,
-)
+
 
 def extract_Ipeaks(device,c):
-    wb = load_workbook('/home/aashish/Desktop/data/'+device+'.xlsx')            #create instance of load_workbook
-    work_sheet=wb['Sheet']                                                       #select the required worksheet
+    wb = load_workbook('/home/aashish/DI/data/'+device+'.xlsx')                 #create instance of load_workbook
+    work_sheet=wb['Sheet']                                                      #select the required worksheet
     c=randrange(65,85) if c==0 else c+64                                        #if no trial specified choose any random trail
     data=[]                                                                     #list to store Ipeak values
     print '*'*39,chr(c),'*'*40
