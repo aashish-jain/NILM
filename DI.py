@@ -6,6 +6,7 @@
 from openpyxl import load_workbook
 from random import randrange
 from statistics import mean
+from math import sqrt
 '''
     PIP-> pyhton library manager
     to install library commmand is:
@@ -29,7 +30,6 @@ from statistics import mean
 minimum_jump_magnitude=5
 t=[]
 devices=['Bulb','Fan','Heater','Cooler','Soldering Iron']
-trial_number=1
 
 class C1:
     jump_magnitude=0
@@ -55,8 +55,7 @@ class template_library(C1,C2,C3):
         print "avg_steadystate_ipeaks={0} settling_time={1} avg_transient_ipeaks={2}".format(self.avg_steadystate_ipeaks,self.settling_time,self.avg_transient_ipeaks)
         print '_'*80
 
-
-def extract_characteristics(data,device=""):                                     #for extracting characteristics
+def extract_characteristics(data,device=""):                                    #for extracting characteristics
     t=template_library()                                                        #for storing the characteristics
     t.device=device
     i=1                                                                         #setting index count of data to be 1
@@ -83,15 +82,12 @@ def extract_characteristics(data,device=""):                                    
         i+=1
     t.settling_time=i-reference
     if(len(temp)!=0):
-        print mean(temp)
         t.avg_transient_ipeaks=mean(temp)
-    del temp
-    temp=[]
     j=i
-    while(i<len(data)):                                                         #Ipeak average is calculated for 5 rises
+    while(i<len(data) and i-j<11):                                               #Ipeak average is calculated for 5 rises
         t.avg_steadystate_ipeaks+=(data[i]-previous_steadystate);
-        temp.append(data[i])
         i+=1
+
     t.avg_steadystate_ipeaks/=(i-j)
     return t
 
@@ -105,49 +101,45 @@ def read_excelsheet(device,c=0):
         data.append(work_sheet[chr(c)+str(i)].value)
     return extract_characteristics(data,device)                                 #return the extracted chracterisitcs from data
 
+def euclidean_distance_list(on_device):
+    d=[]
+    for i in range(0,len(t)):
+        temp=(t[i].jump_magnitude - on_device.jump_magnitude)**2;
+        temp+=(t[i].first_maxima - on_device.first_maxima)**2
+        temp+=(t[i].avg_transient_ipeaks - on_device.avg_transient_ipeaks)**2
+        temp+=(t[i].settling_time - on_device.settling_time)**2
+        temp+=(t[i].avg_steadystate_ipeaks - on_device.avg_steadystate_ipeaks)**2
+        d.append(sqrt(abs(temp)))
+    return d
+
+def identify_device():
+    for device in devices:
+        print '_'*80
+        print 'Actual Device : '+device
+        for i in range(1,21):
+            distance=euclidean_distance_list(read_excelsheet(device,i))
+            # for i in range(0,len(devices)):
+            #     print (str(round(distance[i],2))).ljust(6),
+            # print
+            min_index=0
+            for i in range(0,len(distance)):
+                if(distance[min_index]>distance[i]):
+                    min_index=i
+            try:
+                print devices[min_index]
+            except:
+                print len(distance),' ',min_index
+            # max_index=0
+            # for j in range(1,len(distance_list)):
+            #     if distance_list[max_index]<distance_list[j]:
+            #         max_index=j
+            # print device[max_index]
+
 #Main code exectution starts here
+trial_number=randrange(1,21)
+print "trial_number ",trial_number
 for device in devices:
     t.append(read_excelsheet(device,trial_number))
 for i in range(0,len(t)):
     t[i].print_val()
-
-# def device_identification(on_device):
-#     #finding closest matches for c1,c2,c3
-#     i=0
-#     min1,min2,min3 = 1023,1023,1023                                             #variable for initial comaparison
-#     closest_match=[-1,-1,-1]                                                    #Stores the closes device match (c1,c2,c3)
-#     while i<len(devices):
-#         #c1
-#         d1=abs(t[i].jump_magnitude - on_device.jump_magnitude)
-#         # print d1
-#         if(d1<min1):
-#             min1=d1
-#             closest_match[0]=i
-#         #c2
-#         d2=abs(t[i].first_maxima - on_device.first_maxima)
-#         # print d2
-#         if(d2<min2):
-#             min2=d2
-#             closest_match[1]=i
-#         #c3
-#         d3=abs(t[i].avg_steadystate_ipeaks - on_device.avg_steadystate_ipeaks)
-#         # print d3
-#         if(d3<min3):
-#             min3=d3
-#             closest_match[2]=i
-#         i+=1
-#     print closest_match
-
-#
-# def identify_device(closest_match):
-#     d=[0]*len(template)
-#     for i in range(0,2):
-#         for j in range(0,4):
-#             if(closest_match[i]==j):
-#                 d[i]+=1
-
-# for sheet_name in devices:
-#     #sheet_name=raw_input("Enter the name of device: ")
-#     for tno in range(1,21):
-#         print sheet_name,' trailno =',tno,' ',
-#         device_identification(read_excelsheet(sheet_name,tno))
+identify_device()
