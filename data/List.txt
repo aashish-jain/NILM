@@ -1,0 +1,5 @@
+D1->Soldering Iron
+D2->Fan
+D3->Bulb
+D4->Cooler
+D5->Heater
