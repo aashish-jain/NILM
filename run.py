@@ -25,7 +25,7 @@ devices=['D1','D2','D3','D4','D5']
 
 class template_library():
     first_maxima=0
-    avg_transient_ipeaks=0
+    rate_of_change_transient=0
     settling_time=0
     avg_steadystate=0
     device=''
@@ -33,7 +33,7 @@ class template_library():
         print '_'*80
         print self.device
         print "first_maxima={0} ".format(self.first_maxima)
-        print " avg_transient_ipeaks={0} settling_time={1} ms".format(self.avg_transient_ipeaks,self.settling_time*20)
+        print " rate_of_change_transient={0} settling_time={1} ms".format(self.rate_of_change_transient,self.settling_time)
         print " avg_steadystate={0}".format(self.avg_steadystate)
         print '_'*80
 
@@ -86,7 +86,6 @@ def extract_characteristics(data,device=""):                                    
     i+=1
     #transient and steady state average, settling time
     settling_instant = get_settling_instant(data,i,start_pos)
-    print settling_instant
     t.settling_time = settling_instant - start_pos
     temp=[]
     while( i < settling_instant ):                                              #transient average calculation
@@ -94,7 +93,7 @@ def extract_characteristics(data,device=""):                                    
         i+=1
     if(len(temp)!=0):
         # print temp
-        t.avg_transient_ipeaks=mean(temp)
+        t.rate_of_change_transient=mean(temp)
     del temp
     start_pos=i
     while(i<len(data) and i-start_pos<10):
@@ -103,6 +102,21 @@ def extract_characteristics(data,device=""):                                    
     if(i != start_pos ):
         t.avg_steadystate/=(i-start_pos)
     return t
+
+
+def read_template():
+    wb = load_workbook('/home/aashish/DI/data/template.xlsx')
+    ws = wb['Sheet1']
+    for row in range(67,72):
+        temp=template_library()
+        temp.device=ws[chr(row)+'2'].value
+        temp.first_maxima=ws[chr(row)+'3'].value
+        temp.rate_of_change_transient=ws[chr(row)+'4'].value
+        temp.settling_time=ws[chr(row)+'5'].value
+        temp.avg_steadystate=ws[chr(row)+'6'].value
+        t.append(temp)
+        row+=1
+
 
 #reads data from given excel sheet (name of excel file and sheet should be same)
 def read_excelsheet(device,c=0):
@@ -120,7 +134,7 @@ def euclidean_distance_list(on_device):
     for i in xrange(0,len(t)):
         temp=[]
         temp.append((t[i].first_maxima - on_device.first_maxima)**2)
-        temp.append((t[i].avg_transient_ipeaks - on_device.avg_transient_ipeaks)**2)
+        temp.append((t[i].rate_of_change_transient - on_device.rate_of_change_transient)**2)
         temp.append((t[i].settling_time - on_device.settling_time)**2)
         temp.append((t[i].avg_steadystate - on_device.avg_steadystate)**2)
         # print i+1,' Temp= ',
@@ -131,14 +145,15 @@ def euclidean_distance_list(on_device):
         del temp
     return d
 
+
 def identify_device():
     for device in devices:
         print 'Actual Device : ',device,' '
         for i in xrange(1,21):
             distance=euclidean_distance_list(read_excelsheet(device,i))
-            for i in xrange(0,len(devices)):
-                print '_'*80
-                print (str(round(distance[i],2))).ljust(6),
+            # for i in xrange(0,len(devices)):
+            #     print '_'*80
+            #     print (str(round(distance[i],2))).ljust(6),
             min_index=0
             for i in xrange(1,len(distance)):
                 if(distance[min_index]>distance[i]):
@@ -148,9 +163,8 @@ def identify_device():
 #Main code exectution starts here
 trial_number=randrange(1,21)
 print "trial_number ",trial_number
-for device in devices:
-    t.append(read_excelsheet(device,trial_number))
+read_template()
 for i in xrange(0,len(t)):
     t[i].print_val()
-# identify_device()
+identify_device()
 # (read_excelsheet('D4',trial_number)).print_val()
