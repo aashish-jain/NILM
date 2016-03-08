@@ -20,7 +20,7 @@ from math import sqrt
 
 minimum_jump_magnitude=5
 t=[]
-devices=['D1','D2','D3','D4','D5']
+devices=['D1','D2','D3','D4','D5','1']
 
 
 #class for storing the parameters
@@ -148,7 +148,7 @@ def euclidean_distance_list(on_device):
         del temp
     return d
 
-def identify_single_device():
+def identify_device():
     for device in devices:
         print 'Actual Device : ',device,' '
         on_device=[]
@@ -164,11 +164,12 @@ def identify_single_device():
                 for i in xrange(1,len(distance)):
                     if(distance[min_index]>distance[i]):
                         min_index=i
-                print devices[min_index]
+                print devices[min_index],' ',
+            print
         del on_device
 
 #Main code exectution starts here
 read_template()
 # for i in xrange(0,len(t)):
 #     t[i].print_val()
-identify_single_device()
+identify_device()
