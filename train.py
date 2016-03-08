@@ -9,17 +9,18 @@ from statistics import mean
 from math import sqrt
 
 
-#constant(s) set after empirically observing the data
 minimum_jump_magnitude=3
 t=[]
 devices=['D1','D2','D3','D4','D5']
 
+#class for storing the parameters
 class template_library():
-    first_maxima=0
-    rate_of_change_transient=0
-    settling_time=0
-    avg_steadystate=0
-    device=''
+    def __init__(self):
+        self.first_maxima=0
+        self.rate_of_change_transient=0
+        self.settling_time=0
+        self.avg_steadystate=0
+        self.device=''
     def print_val(self):
         print '_'*80
         print self.device
@@ -28,39 +29,26 @@ class template_library():
         print " avg_steadystate={0}".format(self.avg_steadystate)
         print '_'*80
 
+# finds the settling instant in data list
 def get_settling_instant(data,current_pos,start_pos):
-    temp=[]
-    for i in xrange(current_pos,start_pos+75):
-        temp.append(data[i])
-    steady_state=mean(temp)
-    for i in xrange(current_pos,start_pos+75):
-        if (abs(data[i]-steady_state) <= 10):
-            current_pos=i
-            break
-    del temp
-
-    temp=[]
-    for i in xrange(current_pos,start_pos+75):
-        temp.append(data[i])
-    steady_state=mean(temp)
-    for i in xrange(current_pos,start_pos+75):
-        if (abs(data[i]-steady_state) <= 5):
-            current_pos=i
-            break
-    del temp
-
-    temp=[]
-    for i in xrange(current_pos,start_pos+75):
-        temp.append(data[i])
-    steady_state=mean(temp)
-    for i in xrange(current_pos,start_pos+75):
-        if (abs(data[i]-steady_state) <= 1):
-            current_pos=i
-            break
-    del temp
+    allowance=10
+    a=0
+    while(a!=3):
+        temp=[]
+        for i in xrange(current_pos,start_pos+75):
+            temp.append(data[i])
+        steady_state=mean(temp)
+        for i in xrange(current_pos,start_pos+75):
+            if (abs(data[i]-steady_state) <= 10):
+                current_pos=i
+                break
+        del temp
+        allowance-=5
+        a+=1
     return current_pos
 
-def extract_characteristics(data,device=""):                                    #for extracting characteristics
+# extracts various identification parameters from Ipeak data
+def extract_characteristics(data,device=""):
     t=template_library()                                                        #for storing the characteristics
     t.device=device
     previous_steadystate=data[0]                                                #Assuming first value of data to be SS value
@@ -79,20 +67,19 @@ def extract_characteristics(data,device=""):                                    
     settling_instant = get_settling_instant(data,i,start_pos)
     t.settling_time = settling_instant - start_pos
     temp=[]
-    while( i < settling_instant ):                                              #transient average calculation
+    while( i < settling_instant ):                                              #finding rate of change of Ipeak
         temp.append(data[i] - data[i+1])
         i+=1
     if(len(temp)!=0):
-        # print temp
         t.rate_of_change_transient=mean(temp)
     del temp
-    start_pos=i
+    start_pos=i                                                                 #finding steady_state average
     while(i<len(data) and i-start_pos<10):
         t.avg_steadystate+=(data[i]-previous_steadystate);
         i+=1
     if(i != start_pos ):
         t.avg_steadystate/=(i-start_pos)
-    return t
+    return t                                                                    #returning the extracted characteristics
 
 #reads data from given excel sheet (name of excel file and sheet should be same)
 def read_excelsheet(device,c=0):
@@ -104,7 +91,7 @@ def read_excelsheet(device,c=0):
         data.append(work_sheet[chr(c)+str(i)].value)
     return extract_characteristics(data,device)                                 #return the extracted chracterisitcs from data
 
-
+#takes the average values of exctracted characteristics from 20 trials
 def avg(trials):
     temp=template_library()
     for i in xrange(0,len(trials)):
@@ -118,28 +105,34 @@ def avg(trials):
     temp.avg_steadystate /= 20
     return temp
 
+#witing the template in excel file
+def create_library():
+    print "Creating template library. Please wait..."
+    wb=Workbook()
+    ws=wb.active
+    ws.title = 'Sheet1'
+
+    row=67
+    ws['B2']='Device'
+    ws['B3']='first_maxima'
+    ws['B4']='rate_of_change_transient'
+    ws['B5']='settling_time'
+    ws['B6']='avg_steadystate'
+
+    for device in devices:
+        trials=[]
+        for trial_number in xrange(1,21):
+            trials.append(read_excelsheet(device,trial_number))
+        temp=(avg(trials))
+        ws[chr(row)+'2']=device
+        ws[chr(row)+'3']=temp.first_maxima
+        ws[chr(row)+'4']=temp.rate_of_change_transient
+        ws[chr(row)+'5']=temp.settling_time
+        ws[chr(row)+'6']=temp.avg_steadystate
+        row+=1
+
+    wb.save('/home/aashish/DI/data/template.xlsx')
+    print "creation successful !"
+
 #Main code exectution starts here
-wb=Workbook()
-ws=wb.active
-ws.title = 'Sheet1'
-
-row=67
-ws['B2']='Device'
-ws['B3']='first_maxima'
-ws['B4']='rate_of_change_transient'
-ws['B5']='settling_time'
-ws['B6']='avg_steadystate'
-
-for device in devices:
-    trials=[]
-    for trial_number in xrange(1,21):
-        trials.append(read_excelsheet(device,trial_number))
-    temp=(avg(trials))
-    ws[chr(row)+'2']=device
-    ws[chr(row)+'3']=temp.first_maxima
-    ws[chr(row)+'4']=temp.rate_of_change_transient
-    ws[chr(row)+'5']=temp.settling_time
-    ws[chr(row)+'6']=temp.avg_steadystate
-    row+=1
-
-wb.save('/home/aashish/DI/data/template.xlsx')
+create_library()
