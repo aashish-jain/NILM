@@ -39,7 +39,7 @@ def get_settling_instant(data,current_pos,start_pos):
             temp.append(data[i])
         steady_state=mean(temp)
         for i in xrange(current_pos,start_pos+75):
-            if (abs(data[i]-steady_state) <= 10):
+            if (abs(data[i]-steady_state) <= allowance):
                 current_pos=i
                 break
         del temp

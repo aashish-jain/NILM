@@ -18,9 +18,10 @@ from math import sqrt
     random.randrange for genrating random numbers within a range
 '''
 
-minimum_jump_magnitude=3
+minimum_jump_magnitude=5
 t=[]
 devices=['D1','D2','D3','D4','D5']
+
 
 #class for storing the parameters
 class template_library():
@@ -40,54 +41,70 @@ class template_library():
 
 # finds the settling instant in data list
 def get_settling_instant(data,current_pos,start_pos):
-    allowance=10
+    allowance=11
     a=0
     while(a!=3):
         temp=[]
         for i in xrange(current_pos,start_pos+75):
+            if(i == len(data)):
+                break
             temp.append(data[i])
         steady_state=mean(temp)
         for i in xrange(current_pos,start_pos+75):
-            if (abs(data[i]-steady_state) <= 10):
+            if (abs(data[i]-steady_state) <= allowance):
                 current_pos=i
                 break
         del temp
         allowance-=5
         a+=1
     return current_pos
+
 # extracts various identification parameters from Ipeak data
 def extract_characteristics(data,device=""):
-    t=template_library()                                                        #for storing the characteristics
-    t.device=device
-    previous_steadystate=data[0]                                                #Assuming first value of data to be SS value
-    i=1                                                                         #setting index count of data to be 1
-    #c1
-    while(data[i]-previous_steadystate<minimum_jump_magnitude):                 #traverse the array till a jump is detected
+    T=[]
+    start_pos=0
+    while(1):
+        t=template_library()                                                    #for storing the characteristics
+        t.device=device
+        previous_steadystate=data[start_pos]                                    #Assuming first value of data to be SS value
+        i=start_pos+1                                                           #setting index count of data to be 1
+        #traverse the array till a jump is detected
+        while(data[i]-previous_steadystate<minimum_jump_magnitude and i<len(data)-1):
+            i+=1
+        if(i==len(data)-1):                                                     #end of the list encountered
+            break
+        start_pos=i-1                                                           #instant before the device is switched on
+        i+=1                                                                    #skipping the skew value
+        # first local maxima
+        while(data[i]<data[i+1]):                                               #finding first local maxima
+            i+=1
+        t.first_maxima=data[i]-previous_steadystate                             #storing first maxima magnitude
         i+=1
-    start_pos=i-1                                                               #instant before the device is switched on
-    i+=1                                                                        #skipping the skew value
-    #c2
-    while(data[i]<data[i+1]):                                                   #finding first local maxima
-        i+=1
-    t.first_maxima=data[i]-previous_steadystate                                 #storing first maxima magnitude
-    i+=1
-    #transient and steady state average, settling time
-    settling_instant = get_settling_instant(data,i,start_pos)
-    t.settling_time = settling_instant - start_pos
-    temp=[]
-    while( i < settling_instant ):                                              #finding rate of change of Ipeak
-        temp.append(data[i] - data[i+1])
-        i+=1
-    if(len(temp)!=0):
-        t.rate_of_change_transient=mean(temp)
-    del temp
-    start_pos=i                                                                 #finding steady_state average
-    while(i<len(data) and i-start_pos<10):
-        t.avg_steadystate+=(data[i]-previous_steadystate);
-        i+=1
-    if(i != start_pos ):
-        t.avg_steadystate/=(i-start_pos)
-    return t                                                                    #returning the extracted characteristics
+        #transient and steady state average, settling time
+        settling_instant = get_settling_instant(data,i,start_pos)
+        t.settling_time = settling_instant - start_pos
+        temp=[]
+        while( i < settling_instant ):                                          #finding rate of change of Ipeak
+            temp.append(data[i] - data[i+1])
+            i+=1
+        if(len(temp)!=0):
+            t.rate_of_change_transient=mean(temp)
+        del temp
+        start_pos=i                                                             #finding steady_state average
+        while(i<len(data) and i-start_pos<10):
+            t.avg_steadystate+=(data[i]-previous_steadystate);
+            i+=1
+        if(i != start_pos ):
+            t.avg_steadystate/=(i-start_pos)
+        start_pos=i
+        T.append(t)
+        if(len(data)-i <75):
+            break
+        # print 'hi'
+        # raw_input()
+        # for x in xrange(0,len(T)):
+        #     T[x].print_val()
+    return T                                                                    #returning the extracted characteristics
 
 #reads data from given excel sheet (name of excel file and sheet should be same)
 def read_excelsheet(device,c=0):
@@ -99,7 +116,7 @@ def read_excelsheet(device,c=0):
         data.append(work_sheet[chr(c)+str(i)].value)
     return extract_characteristics(data,device)                                 #return the extracted chracterisitcs from data
 
-
+#reads the created device paramter template
 def read_template():
     wb = load_workbook('/home/aashish/DI/data/template.xlsx')
     ws = wb['Sheet1']
@@ -113,7 +130,7 @@ def read_template():
         t.append(temp)
         row+=1
 
-
+# calulates distance between the device and tempalte device points
 def euclidean_distance_list(on_device):
     d=[]
     for i in xrange(0,len(t)):
@@ -131,27 +148,27 @@ def euclidean_distance_list(on_device):
         del temp
     return d
 
-def identify_device():
+def identify_single_device():
     for device in devices:
         print 'Actual Device : ',device,' '
-        while(1):
-            on_device = read_excelsheet
-        for i in xrange(1,21):
-            distance=euclidean_distance_list()
-            # for i in xrange(0,len(devices)):
-            #     print '_'*80
-            #     print (str(round(distance[i],2))).ljust(6),
-            min_index=0
-            for i in xrange(1,len(distance)):
-                if(distance[min_index]>distance[i]):
-                    min_index=i
-            print devices[min_index]
+        on_device=[]
+        for trial in xrange(1,21):
+            on_device.append(read_excelsheet(device,trial))
+        for j in xrange(0,len(on_device)):
+            for k in xrange(0,len(on_device[j])):
+                distance=euclidean_distance_list(on_device[j][k])
+                # for i in xrange(0,len(devices)):
+                #     print '_'*80
+                #     print (str(round(distance[i],2))).ljust(6),
+                min_index=0
+                for i in xrange(1,len(distance)):
+                    if(distance[min_index]>distance[i]):
+                        min_index=i
+                print devices[min_index]
+        del on_device
 
 #Main code exectution starts here
-trial_number=randrange(1,21)
-print "trial_number ",trial_number
 read_template()
-for i in xrange(0,len(t)):
-    t[i].print_val()
-# on_device=[]
-# identify_device()
+# for i in xrange(0,len(t)):
+#     t[i].print_val()
+identify_single_device()
