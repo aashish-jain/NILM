@@ -75,16 +75,12 @@ def extract_characteristics(data,device=""):
     if(len(temp)!=0):
         t.rate_of_change_transient=mean(temp)
     del temp
-    start_pos=i                                                                 #finding steady_state average
-    while(i<len(data) and i-start_pos<10):
-        t.avg_steadystate+=(data[i]-previous_steadystate);
-        i+=1
-    if(i != start_pos ):
-        t.avg_steadystate/=(i-start_pos)
+    t.avg_steadystate=data[settling_instant]-previous_steadystate
     if max_settling_time<t.settling_time:
         max_settling_time=t.settling_time
     if min_jump_magnitude-previous_steadystate > temp_jump_magnitude-previous_steadystate:
         min_jump_magnitude=temp_jump_magnitude-previous_steadystate
+    t.print_val()
     return t                                                                    #returning the extracted characteristics
 
 #reads data from given excel sheet (name of excel file and sheet should be same)

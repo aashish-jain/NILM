@@ -66,10 +66,10 @@ def extract_characteristics(data,device=""):
     while(1):
         t=template_library()                                                    #for storing the characteristics
         t.device=device
-        previous_steadystate=data[start_pos]                                    #Assuming first value of data to be SS value
+        previous_steadystate=int(data[start_pos])                               #Assuming first value of data to be SS value
         i=start_pos+1                                                           #setting index count of data to be 1
         #traverse the array till a jump is detected
-        while(data[i]-previous_steadystate<minimum_jump_magnitude and i<len(data)-1):
+        while(data[i]-previous_steadystate < min_jump_magnitude and i<len(data)-1):
             i+=1
         if(i==len(data)-1):                                                     #end of the list encountered
             break
@@ -90,12 +90,7 @@ def extract_characteristics(data,device=""):
         if(len(temp)!=0):
             t.rate_of_change_transient=mean(temp)
         del temp
-        start_pos=i                                                             #finding steady_state average
-        while(i<len(data) and i-start_pos<10):
-            t.avg_steadystate+=(data[i]-previous_steadystate);
-            i+=1
-        if(i != start_pos ):
-            t.avg_steadystate/=(i-start_pos)
+        t.avg_steadystate=data[settling_instant]-previous_steadystate
         start_pos=i
         T.append(t)
         if(len(data)-i <max_settling_time*2):
@@ -112,7 +107,7 @@ def read_excelsheet(device,c=0):
     work_sheet=wb['Sheet1']                                                     #select the required worksheet
     c=randrange(65,85) if c==0 else c+64                                        #if no trial specified choose any random trail
     data=[]                                                                     #list to store Ipeak values
-    i=1
+    i=2
     value=0
     while(1):                                                                    #copy values from cells and store it in data list
         value=work_sheet[chr(c)+str(i)].value
@@ -128,8 +123,8 @@ def read_template():
     global min_jump_magnitude
     wb = load_workbook('/home/aashish/DI/data/template.xlsx')
     ws = wb['Sheet1']
-    min_jump_magnitude=ws['C1'].value
-    max_settling_time=ws['F1'].value
+    min_jump_magnitude=int(ws['C1'].value)
+    max_settling_time=int(ws['F1'].value)
     row=67
     for row in range(67,72):
         temp=template_library()
