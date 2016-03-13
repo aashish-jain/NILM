@@ -10,6 +10,8 @@ from math import sqrt
 
 
 minimum_jump_magnitude=3
+max_settling_time=0
+min_jump_magnitude=1023
 t=[]
 devices=['D1','D2','D3','D4','D5']
 
@@ -32,23 +34,22 @@ class template_library():
 # finds the settling instant in data list
 def get_settling_instant(data,current_pos,start_pos):
     allowance=10
-    a=0
-    while(a!=3):
+    while(allowance!=0):
         temp=[]
-        for i in xrange(current_pos,start_pos+75):
-            temp.append(data[i])
+        temp=data[current_pos:]
         steady_state=mean(temp)
-        for i in xrange(current_pos,start_pos+75):
+        for i in xrange(current_pos,len(data)):
             if (abs(data[i]-steady_state) <= allowance):
                 current_pos=i
                 break
         del temp
-        allowance-=5
-        a+=1
+        allowance-=1
     return current_pos
 
 # extracts various identification parameters from Ipeak data
 def extract_characteristics(data,device=""):
+    global max_settling_time
+    global min_jump_magnitude
     t=template_library()                                                        #for storing the characteristics
     t.device=device
     previous_steadystate=data[0]                                                #Assuming first value of data to be SS value
@@ -58,6 +59,7 @@ def extract_characteristics(data,device=""):
         i+=1
     start_pos=i-1                                                               #instant before the device is switched on
     i+=1                                                                        #skipping the skew value
+    temp_jump_magnitude=data[i]
     #c2
     while(data[i]<data[i+1]):                                                   #finding first local maxima
         i+=1
@@ -79,6 +81,10 @@ def extract_characteristics(data,device=""):
         i+=1
     if(i != start_pos ):
         t.avg_steadystate/=(i-start_pos)
+    if max_settling_time<t.settling_time:
+        max_settling_time=t.settling_time
+    if min_jump_magnitude-previous_steadystate > temp_jump_magnitude-previous_steadystate:
+        min_jump_magnitude=temp_jump_magnitude-previous_steadystate
     return t                                                                    #returning the extracted characteristics
 
 #reads data from given excel sheet (name of excel file and sheet should be same)
@@ -130,9 +136,14 @@ def create_library():
         ws[chr(row)+'5']=temp.settling_time
         ws[chr(row)+'6']=temp.avg_steadystate
         row+=1
-
+    ws['B1']='min_jump_magnitude'
+    ws['C1']=min_jump_magnitude
+    ws['E1']='max_settling_time'
+    ws['F1']=max_settling_time
     wb.save('/home/aashish/DI/data/template.xlsx')
     print "creation successful !"
+
+
 
 #Main code exectution starts here
 create_library()

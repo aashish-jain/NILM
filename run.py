@@ -18,9 +18,10 @@ from math import sqrt
     random.randrange for genrating random numbers within a range
 '''
 
-minimum_jump_magnitude=5
+min_jump_magnitude=0
+max_settling_time=0
 t=[]
-devices=['D1','D2','D3','D4','D5','1']
+devices=['D1','D2','D3','D4','D5']
 
 
 #class for storing the parameters
@@ -43,20 +44,19 @@ class template_library():
 def get_settling_instant(data,current_pos,start_pos):
     allowance=11
     a=0
-    while(a!=3):
+    while(allowance!=0):
         temp=[]
-        for i in xrange(current_pos,start_pos+75):
+        for i in xrange(current_pos,start_pos+max_settling_time*2):
             if(i == len(data)):
                 break
             temp.append(data[i])
         steady_state=mean(temp)
-        for i in xrange(current_pos,start_pos+75):
+        for i in xrange(current_pos,max_settling_time*2):
             if (abs(data[i]-steady_state) <= allowance):
                 current_pos=i
                 break
         del temp
-        allowance-=5
-        a+=1
+        allowance-=1
     return current_pos
 
 # extracts various identification parameters from Ipeak data
@@ -98,7 +98,7 @@ def extract_characteristics(data,device=""):
             t.avg_steadystate/=(i-start_pos)
         start_pos=i
         T.append(t)
-        if(len(data)-i <75):
+        if(len(data)-i <max_settling_time*2):
             break
         # print 'hi'
         # raw_input()
@@ -108,18 +108,29 @@ def extract_characteristics(data,device=""):
 
 #reads data from given excel sheet (name of excel file and sheet should be same)
 def read_excelsheet(device,c=0):
-    wb = load_workbook('/home/aashish/DI/data/1/'+device+'.xlsx')               #create instance of load_workbook
+    wb = load_workbook('/home/aashish/DI/find/'+device+'.xlsx')                 #create instance of load_workbook
     work_sheet=wb['Sheet1']                                                     #select the required worksheet
     c=randrange(65,85) if c==0 else c+64                                        #if no trial specified choose any random trail
     data=[]                                                                     #list to store Ipeak values
-    for i in xrange(2,202):                                                      #copy values from cells and store it in data list
+    i=1
+    value=0
+    while(1):                                                                    #copy values from cells and store it in data list
+        value=work_sheet[chr(c)+str(i)].value
+        if(value==None):
+            break
         data.append(work_sheet[chr(c)+str(i)].value)
+        i+=1
     return extract_characteristics(data,device)                                 #return the extracted chracterisitcs from data
 
 #reads the created device paramter template
 def read_template():
+    global max_settling_time
+    global min_jump_magnitude
     wb = load_workbook('/home/aashish/DI/data/template.xlsx')
     ws = wb['Sheet1']
+    min_jump_magnitude=ws['C1'].value
+    max_settling_time=ws['F1'].value
+    row=67
     for row in range(67,72):
         temp=template_library()
         temp.device=ws[chr(row)+'2'].value
@@ -149,7 +160,7 @@ def euclidean_distance_list(on_device):
     return d
 
 def identify_device():
-    for device in devices:
+    for device in devices[5:]:
         print 'Actual Device : ',device,' '
         on_device=[]
         for trial in xrange(1,21):
@@ -169,7 +180,8 @@ def identify_device():
         del on_device
 
 #Main code exectution starts here
+devices.append(raw_input("Enter device name"))
 read_template()
-# for i in xrange(0,len(t)):
-#     t[i].print_val()
+for i in xrange(0,len(t)):
+    t[i].print_val()
 identify_device()
